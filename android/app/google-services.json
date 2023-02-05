@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "412018092205",
+    "project_id": "messageme-app-8c7c9",
+    "storage_bucket": "messageme-app-8c7c9.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412018092205:android:15ab47f84fd0e52f877e24",
+        "android_client_info": {
+          "package_name": "at.amal.my_chat_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "412018092205-d8jjqb97n9grbl7kc8d8ql5k6shccpa5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5xZ4BKcOnJpugFQ-7PX4u8-RKizWDXLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "412018092205-d8jjqb97n9grbl7kc8d8ql5k6shccpa5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
