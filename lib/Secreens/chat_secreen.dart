@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:googleapis_auth/auth_io.dart';
 import 'package:my_chat_app/Secreens/sing_in_secreen.dart';
+import 'package:my_chat_app/main.dart';
+import 'Notifications_Secreen.dart';
+import 'package:http/http.dart' as http;
 
 final _fireStore = FirebaseFirestore.instance;
 late User singInUser;
@@ -16,9 +23,11 @@ class ChatSecreen extends StatefulWidget {
 }
 
 class _ChatSecreenState extends State<ChatSecreen> {
-  final _auth = FirebaseAuth.instance;
+  final _auth = FirebaseAuth.instance; //
   String? message;
+  String token = '';
   final messageTextController = TextEditingController();
+  List<RemoteNotification?> notifications = [];
   void getCurrentUser() {
     try {
       final user = _auth.currentUser;
@@ -31,9 +40,64 @@ class _ChatSecreenState extends State<ChatSecreen> {
     }
   }
 
+  void getNotifications() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        setState(() {
+          notifications.add(message.notification);
+        });
+        print(
+            'Message also contained a notification: ${message.notification!.title} ');
+      }
+    });
+  }
+
+  void sentNotifications(String title, String body) async {
+    http.Response response = await http.post(
+      Uri.parse(
+          'https://fcm.googleapis.com/v1/projects/messageme-app-8c7c9/messages:send'),
+      headers: {
+        'content_Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
+      body: jsonEncode(
+        {
+          "message": {
+            // "topic": "ChatApp", //--> topic not support spaces
+            "token": fcmToken,
+            "notification": {"title": title, "body": body},
+          }
+        },
+      ),
+    );
+    print('response.body : ${response.body}');
+  }
+
+  Future<AccessToken> getAcseseToken() async {
+    final servicAcount = await rootBundle.loadString(
+        'asset/messageme-app-8c7c9-firebase-adminsdk-1kb47-431fd539dd.json');
+    final data = await json.decode(servicAcount);
+    print(data);
+    final accountCredentials = ServiceAccountCredentials.fromJson({
+      "private_key_id": data['private_key_id'],
+      "private_key": data['private_key'],
+      "client_email": data['client_email'],
+      "client_id": data['client_id'],
+      "type": data['type']
+    });
+    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+    final AuthClient authClient =
+        await clientViaServiceAccount(accountCredentials, scopes)
+          ..close();
+    print(authClient.credentials.accessToken);
+    return authClient.credentials.accessToken;
+  }
+
   @override
   void initState() {
     getCurrentUser();
+    getAcseseToken().then((value) => token = value.data);
+    getNotifications();
     super.initState();
   }
 
@@ -58,6 +122,35 @@ class _ChatSecreenState extends State<ChatSecreen> {
           ],
         ),
         actions: [
+          Stack(
+            children: [
+              IconButton(
+                iconSize: 25,
+                icon: Icon(Icons.notifications),
+                onPressed: () {
+                  Navigator.pushNamed(context, NotificationsSecreen.id,
+                          arguments: notifications)
+                      .then(
+                    (value) => setState(() {
+                      notifications.clear();
+                    }),
+                  );
+                },
+              ),
+              notifications.isNotEmpty
+                  ? Container(
+                      margin: EdgeInsets.all(10),
+                      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                          color: Colors.red, shape: BoxShape.circle),
+                      child: Text(
+                        '${notifications.length}',
+                        style: TextStyle(fontSize: 10),
+                      ),
+                    )
+                  : SizedBox(),
+            ],
+          ),
           IconButton(
             iconSize: 25,
             icon: Icon(Icons.logout),
@@ -87,7 +180,7 @@ class _ChatSecreenState extends State<ChatSecreen> {
                   Expanded(
                     child: TextField(
                       controller: messageTextController,
-                      onChanged: (value) {
+                      onChanged: (value) async {
                         message = value;
                       },
                       decoration: InputDecoration(
@@ -104,6 +197,8 @@ class _ChatSecreenState extends State<ChatSecreen> {
                         'sender': singInUser.email,
                         'time': DateTime.now()
                       });
+                      sentNotifications(
+                          'message from ${singInUser.email}', '$message');
                     },
                     child: Text(
                       'send',
